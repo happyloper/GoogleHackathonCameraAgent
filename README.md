@@ -3,7 +3,8 @@
 [![JJABS Humanoid Robot](https://img.youtube.com/vi/JkMVSxqGRvg/maxresdefault.jpg)](https://youtu.be/JkMVSxqGRvg)
 *(↑ 클릭하여 제작 중인 로봇 영상을 확인해보세요!)*
 
-🎥 **[JJABS Camera Director 실제 시연 영상 보기](https://youtu.be/baLYMAm0dIQ)**
+[![JJABS Camera Director 실제 시연 영상 보기](https://img.youtube.com/vi/baLYMAm0dIQ/maxresdefault.jpg)](https://youtu.be/baLYMAm0dIQ)
+*(↑ 클릭하여 해커톤 데모 시연 영상을 확인해보세요!)*
 
 ## 👋 프로젝트 배경 및 스토리
 
