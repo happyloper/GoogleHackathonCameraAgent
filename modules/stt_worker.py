@@ -42,7 +42,7 @@ def _transcribe(model, audio_data):
         raw_bytes = audio_data.get_raw_data(convert_rate=16000, convert_width=2)
         audio_np = np.frombuffer(raw_bytes, np.int16).flatten().astype(np.float32) / 32768.0
 
-        hint_prompt = "짭스, 헤이짭스, 타겟, 설정, 확대, 줌인, 구도 복원, 종료, 꺼 줘, 종이컵. "
+        hint_prompt = "짭스, 헤이짭스, 타겟, 설정, 확대, 줌인, 구도 복원, 종료, 꺼 줘, 종이컵, 물병. "
 
         segments, info = model.transcribe(
             audio_np,
@@ -86,7 +86,10 @@ def stt_process(pipe_conn):
     print("[STT] 주변 소음 측정 중 (2초)...")
     with mic as source:
         recognizer.adjust_for_ambient_noise(source, duration=2)
-        recognizer.pause_threshold = 0.5
+    # 말 끝나자마자 빠르게 인식하도록
+    recognizer.pause_threshold = 0.6
+    recognizer.non_speaking_duration = 0.4
+    recognizer.energy_threshold = 300  # 기본보다 약간 낮게 (민감하게)
 
     # 준비 완료 알림
     pipe_conn.send({"type": "status", "status": "ready"})
@@ -103,69 +106,83 @@ def stt_process(pipe_conn):
                     print("[STT] 종료 신호 수신")
                     break
 
-            with mic as source:
-                if state == "WAKE_WORD_LISTENING":
-                    try:
-                        audio_data = recognizer.listen(source, timeout=5, phrase_time_limit=5)
-                    except sr.WaitTimeoutError:
-                        continue
+            try:
+                with mic as source:
+                    if state == "WAKE_WORD_LISTENING":
+                        try:
+                            # 호출어 감지: 짧게 듣고 바로 처리 (빠른 응답)
+                            audio_data = recognizer.listen(
+                                source, timeout=3, phrase_time_limit=3
+                            )
+                        except sr.WaitTimeoutError:
+                            continue
 
-                    text = _transcribe(model, audio_data)
-                    if not text:
-                        continue
+                        text = _transcribe(model, audio_data)
+                        if not text:
+                            continue
 
-                    # 종료 명령 체크
-                    term_detected, _ = _is_detected(text, TERMINATE_WORDS)
-                    if term_detected:
-                        pipe_conn.send({"type": "terminate"})
-                        break
+                        print(f"[STT] 인식됨: '{text}'")
 
-                    # 호출어 체크
-                    wake_detected, word = _is_detected(text, WAKE_WORDS)
-                    if wake_detected:
-                        print(f"[STT] 호출어 감지: '{word}' (원문: {text})")
-                        pipe_conn.send({"type": "status", "status": "wake_detected"})
-
-                        # 호출어와 함께 명령이 포함되어 있는지 확인
-                        # 예: "짭스 이거 타겟 설정해 줘" → 호출어 + 명령이 한 문장
-                        remaining = text
-                        for w in WAKE_WORDS:
-                            remaining = remaining.replace(w, "").strip()
-                        remaining = remaining.strip(" ,.")
-
-                        if len(remaining) > 3:
-                            # 한 문장에 호출어+명령 포함
-                            print(f"[STT] 즉시 명령 인식: {remaining}")
-                            pipe_conn.send({"type": "command", "text": remaining})
-                            state = "WAKE_WORD_LISTENING"
-                        else:
-                            # 명령 대기 모드로 전환
-                            state = "COMMAND_LISTENING"
-
-                elif state == "COMMAND_LISTENING":
-                    pipe_conn.send({"type": "status", "status": "listening_command"})
-                    try:
-                        audio_data = recognizer.listen(source, timeout=10, phrase_time_limit=15)
-                    except sr.WaitTimeoutError:
-                        print("[STT] 명령 대기 시간 초과")
-                        pipe_conn.send({"type": "status", "status": "timeout"})
-                        state = "WAKE_WORD_LISTENING"
-                        continue
-
-                    command_text = _transcribe(model, audio_data)
-                    if command_text:
                         # 종료 명령 체크
-                        term_detected, _ = _is_detected(command_text, TERMINATE_WORDS)
+                        term_detected, _ = _is_detected(text, TERMINATE_WORDS)
                         if term_detected:
                             pipe_conn.send({"type": "terminate"})
                             break
 
-                        print(f"[STT] 명령 수신: {command_text}")
-                        pipe_conn.send({"type": "command", "text": command_text})
-                    else:
-                        pipe_conn.send({"type": "status", "status": "not_recognized"})
+                        # 호출어 체크
+                        wake_detected, word = _is_detected(text, WAKE_WORDS)
+                        if wake_detected:
+                            print(f"[STT] 호출어 감지: '{word}' (원문: {text})")
+                            pipe_conn.send({"type": "status", "status": "wake_detected"})
 
-                    state = "WAKE_WORD_LISTENING"
+                            # 호출어와 함께 명령이 포함되어 있는지 확인
+                            remaining = text
+                            for w in WAKE_WORDS:
+                                remaining = remaining.replace(w, "").strip()
+                            remaining = remaining.strip(" ,.")
+
+                            if len(remaining) > 3:
+                                # 한 문장에 호출어+명령 포함
+                                print(f"[STT] 즉시 명령 인식: {remaining}")
+                                pipe_conn.send({"type": "command", "text": remaining})
+                            else:
+                                # 명령 대기 모드로 전환
+                                state = "COMMAND_LISTENING"
+                                pipe_conn.send({"type": "status", "status": "listening_command"})
+
+                    elif state == "COMMAND_LISTENING":
+                        try:
+                            # 명령 대기: 더 길게 들으며 명령 수신
+                            audio_data = recognizer.listen(
+                                source, timeout=7, phrase_time_limit=10
+                            )
+                        except sr.WaitTimeoutError:
+                            print("[STT] 명령 대기 시간 초과")
+                            pipe_conn.send({"type": "status", "status": "timeout"})
+                            state = "WAKE_WORD_LISTENING"
+                            continue
+
+                        command_text = _transcribe(model, audio_data)
+                        if command_text:
+                            # 종료 명령 체크
+                            term_detected, _ = _is_detected(command_text, TERMINATE_WORDS)
+                            if term_detected:
+                                pipe_conn.send({"type": "terminate"})
+                                break
+
+                            print(f"[STT] 명령 수신: {command_text}")
+                            pipe_conn.send({"type": "command", "text": command_text})
+                        else:
+                            pipe_conn.send({"type": "status", "status": "not_recognized"})
+
+                        # 항상 대기 모드로 복귀
+                        state = "WAKE_WORD_LISTENING"
+
+            except Exception as e:
+                # 예외 발생 시 항상 대기 모드로 복귀 (멈추지 않게)
+                print(f"[STT] 루프 오류 (복구됨): {e}")
+                state = "WAKE_WORD_LISTENING"
+                time.sleep(0.5)
 
     except KeyboardInterrupt:
         print("[STT] 프로세스 종료")

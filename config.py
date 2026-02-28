@@ -14,7 +14,7 @@ OBS_PASSWORD = os.getenv("OBS_PASSWORD", "")
 
 # ── Gemini API ──
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_MODEL = "gemini-2.5-flash"  # 해커톤 크레딧 키 사용 시 유료 할당량 적용
 
 # ── STT (Faster-Whisper) ──
 STT_MODEL_SIZE = "small"

@@ -445,6 +445,9 @@ class CameraDirectorWindow(QMainWindow):
         self.video_widget.actual_frame_w = orig_w
         self.video_widget.actual_frame_h = orig_h
 
+        # PTZ도 실제 프레임 크기로 동기화
+        self.ptz.update_frame_size(orig_w, orig_h)
+
         # PTZ 애니메이션 업데이트 및 적용
         self.ptz.update()
         processed_frame = self.ptz.apply_view(frame)
@@ -502,6 +505,8 @@ class CameraDirectorWindow(QMainWindow):
             self._cmd_reset_view()
         elif action == "remove_target":
             self._cmd_remove_target(parsed.get("target"))
+        elif action == "list_targets":
+            self._cmd_list_targets()
         else:
             self.status_bar.set_state("not_recognized", extra_text=text)
             self.tts.speak_async("명령을 이해하지 못했습니다.")
@@ -569,6 +574,19 @@ class CameraDirectorWindow(QMainWindow):
         self.ptz.reset_view(duration=0.8)
         self.tts.speak_async("구도를 복원합니다.")
         QTimer.singleShot(1000, lambda: self.status_bar.set_state("idle"))
+
+    def _cmd_list_targets(self):
+        """등록된 모든 타겟 목록을 음성으로 안내합니다."""
+        all_targets = self.targets.get_all()
+        if not all_targets:
+            self.tts.speak_async("등록된 타겟이 없습니다.")
+            self.status_bar.set_state("idle")
+            return
+
+        names = [f"타겟 {t.id}, {t.label}" for t in all_targets]
+        speech = f"현재 {len(all_targets)}개의 타겟이 등록되어 있습니다. " + ", ".join(names)
+        self.status_bar.set_state("idle", extra_text=f"타겟 {len(all_targets)}개")
+        self.tts.speak_async(speech)
 
     def _cmd_remove_target(self, target_query):
         """타겟 삭제 명령"""

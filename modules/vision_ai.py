@@ -80,11 +80,21 @@ class VisionAI:
             # Gemini에 이미지 업로드
             uploaded_file = self.client.files.upload(file=temp_path)
 
-            # 이미지 + 프롬프트 전송
-            response = self.client.models.generate_content(
-                model=GEMINI_MODEL,
-                contents=[uploaded_file, prompt],
-            )
+            # 이미지 + 프롬프트 전송 (429 레이트리밋 시 자동 재시도)
+            import time as _time
+            for attempt in range(2):
+                try:
+                    response = self.client.models.generate_content(
+                        model=GEMINI_MODEL,
+                        contents=[uploaded_file, prompt],
+                    )
+                    break
+                except Exception as api_err:
+                    if "429" in str(api_err) and attempt == 0:
+                        print("[Vision] API 한도 초과 — 30초 후 재시도...")
+                        _time.sleep(30)
+                    else:
+                        raise api_err
 
             print(f"[Vision] Gemini 응답: {response.text}")
 

@@ -25,6 +25,11 @@ class VoiceController:
         "remove_target": [
             r"타겟.*삭제", r"타겟.*제거", r"삭제",
         ],
+        "list_targets": [
+            r"모든.*타겟", r"타겟.*목록", r"타겟.*알려",
+            r"타겟.*뭐", r"뭐.*있", r"등록.*뭐",
+            r"타겟.*리스트", r"타겟.*확인",
+        ],
     }
 
     def parse_command(self, text):

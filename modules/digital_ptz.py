@@ -32,22 +32,34 @@ class DigitalPTZ:
 
     @property
     def is_zoomed(self):
-        """현재 줌인 상태인지 확인합니다."""
-        return self.current_view != self.full_view
+        """현재 줌인 상태인지 확인합니다. (부동소수점 허용량 반영)"""
+        eps = 0.01
+        return (
+            abs(self.current_view[0] - self.full_view[0]) > eps or
+            abs(self.current_view[1] - self.full_view[1]) > eps or
+            abs(self.current_view[2] - self.full_view[2]) > eps or
+            abs(self.current_view[3] - self.full_view[3]) > eps
+        )
 
     @property
     def is_animating(self):
         return self._animating
 
-    def zoom_to(self, bbox, duration=0.8, padding=0.5, min_crop_ratio=0.3):
+    def update_frame_size(self, width, height):
+        """실제 프레임 해상도로 동기화합니다."""
+        if width != self.frame_width or height != self.frame_height:
+            self.frame_width = width
+            self.frame_height = height
+
+    def zoom_to(self, bbox, duration=0.8, padding=0.15, min_crop_ratio=0.1):
         """
         특정 바운딩 박스로 줌인 애니메이션을 시작합니다.
 
         Args:
             bbox: [x1, y1, x2, y2] 픽셀 좌표
             duration: 애니메이션 지속 시간 (초)
-            padding: bbox 주변 여백 비율 (0.5 = 50% 추가 공간)
-            min_crop_ratio: 최소 크롭 비율 (0.3 = 프레임의 30% 이상)
+            padding: bbox 주변 여백 비율 (0.15 = 15% — 타이트한 줌)
+            min_crop_ratio: 최소 크롭 비율 (0.1 = 프레임의 10% 이상)
         """
         # 픽셀 좌표를 정규화 좌표로 변환
         x1 = bbox[0] / self.frame_width
@@ -66,7 +78,7 @@ class DigitalPTZ:
         target_x2 = min(1.0, x2 + pad_x)
         target_y2 = min(1.0, y2 + pad_y)
 
-        # 최소 크롭 크기 보장 (너무 과격한 줌 방지)
+        # 최소 크롭 크기 보장 (극단적으로 작은 객체 방지)
         target_w = target_x2 - target_x1
         target_h = target_y2 - target_y1
         if target_w < min_crop_ratio:
@@ -95,6 +107,8 @@ class DigitalPTZ:
             center_x = (target_x1 + target_x2) / 2
             target_x1 = max(0.0, center_x - new_w / 2)
             target_x2 = min(1.0, center_x + new_w / 2)
+
+        print(f"[PTZ] 줌인 타겟: [{target_x1:.3f}, {target_y1:.3f}, {target_x2:.3f}, {target_y2:.3f}]")
 
         self._start_animation(
             [target_x1, target_y1, target_x2, target_y2],
