@@ -18,3 +18,9 @@ Thumbs.db
 
 # VS Code 설정
 .vscode/
+
+# 테스트 캡처 이미지 결과물 폴더
+captures/
+*.txt
+*.jpg
+*.png
