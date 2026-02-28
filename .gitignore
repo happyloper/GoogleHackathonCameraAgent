@@ -1,0 +1,20 @@
+# --- .gitignore 파일 내용 ---
+
+# 파이썬 가상환경 폴더
+venv/
+env/
+
+# 파이썬 내부 캐시
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 환경변수 (내 Gemini 중요 API 키 유출 방지!)
+.env
+
+# 윈도우/맥 OS 시스템 파일
+.DS_Store
+Thumbs.db
+
+# VS Code 설정
+.vscode/
