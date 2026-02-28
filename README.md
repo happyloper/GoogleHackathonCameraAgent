@@ -3,6 +3,8 @@
 [![JJABS Humanoid Robot](https://img.youtube.com/vi/JkMVSxqGRvg/maxresdefault.jpg)](https://youtu.be/JkMVSxqGRvg)
 *(↑ 클릭하여 제작 중인 로봇 영상을 확인해보세요!)*
 
+🎥 **[JJABS Camera Director 실제 시연 영상 보기](https://youtu.be/baLYMAm0dIQ)**
+
 ## 👋 프로젝트 배경 및 스토리
 
 저는 **메이커**로서 위 영상과 같은 휴머노이드 로봇이나 다양한 하드웨어를 제작하는 과정을 촬영하는 일이 많습니다. 3D 프린터 출력, 정밀한 납땜, 복잡한 로봇 부품 조립 등 양손을 모두 써야 하는 작업 중에 **멀티 카메라를 전환**하거나 **특정 부품을 클로즈업**하는 것은 혼자서 감당하기 매우 힘든 일이었습니다.
